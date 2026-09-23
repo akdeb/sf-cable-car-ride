@@ -99,7 +99,7 @@ behind or ahead of a sideways view along Hyde.
 
 ## Sound
 
-Procedural, from the repo's sound kit (`tick` → `sTick`, `paper` → `paperSnd`). No music. The
+Procedural from the repo's sound kit (`tick` → `sTick`, `paper` → `paperSnd`), except one embedded public-domain gull recording. No music. The
 ride sound is modelled on a user-supplied field recording (*Cable Car Big 19 making those cable
 car sounds.mp3*, 57 s). It was analysed but not embedded, since the repo keeps outside recordings
 out of the deliverable unless licensed and attributed. Measured in the recording:
@@ -128,12 +128,12 @@ How the film models it:
 - **Car events.** The grip clunks and ratchets at each departure, brakes squeal into each stop,
   and track-brake pulses sound on the plunge. The passing car brings its own panned roar, bell and
   clanks.
-- **The world.** The truck's diesel pans with `trkOff`. The bay has herring gulls (a nasal "kyow" rising and falling through two formants, then a laughing run of short "ha" notes; the first version was a thin songbird-like chirp), lapping water, the
+- **The world.** The truck's diesel pans with `trkOff`. The bay has Western gulls from a real recording (National Park Service, Golden Gate NRA, public domain; short runs of the laughing call at varied pitch, pan and distance; see [AUDIO-SOURCES.md](AUDIO-SOURCES.md)). Two synthetic gull attempts came first: a songbird-like chirp, then a formant "kyow" that the director found haunting. The bay also has lapping water, the
   turntable, neon ticks and buzz, and a foghorn.
 
 In the moving passages the film's 100–300 Hz share is about 70% (the recording's is about 90% on
 the same analysis). Measured (Firefox, `audio.mjs --twice`): 97.000 s, 48 kHz stereo, two cold
-renders byte-identical. I −16.5 LUFS, LRA 5.4 LU, TP −1.20 dBTP, 0 clipped, correlation 0.24.
+renders byte-identical. I −16.4 LUFS, LRA 5.3 LU, TP −1.20 dBTP, 0 clipped, correlation 0.24.
 Nobody has listened to it; perceptual quality is unclaimed.
 
 ## Verification
