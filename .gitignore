@@ -1,2 +1,4 @@
 node_modules/
 out/
+# GIF export of the site video: too large for the repo (about 63 MB)
+site/hyde-street.gif

@@ -10,6 +10,9 @@ car. Every pixel is drawn in Canvas 2D and every sound but one is synthesised, i
 **Watch:** open [`site/`](site/) (deployed on Vercel), or open
 [`films/hyde-street/index.html`](films/hyde-street/) in a browser and press Play, with Sound on.
 
+**Play:** [`/game`](site/game/) walks a coyote over the same hills, from Union Square to the
+bay, in the same risograph print. ← → walk, ↑ jump, ↓ duck (on-screen buttons on phones).
+
 ## Hyde Street
 
 The camera is bolted to the car. When it climbs Powell (up to 17%) or plunges down Hyde (21%, the
