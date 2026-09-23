@@ -43,6 +43,16 @@
   .corner a:hover, .corner a:focus-visible, .corner button:hover, .corner button:focus-visible { opacity: .95; outline: none; }
   .corner svg { width: 20px; height: 20px; fill: currentColor; }
   .hidden { display: none; }
+  /* A quiet prompt: the film autoplays muted (browsers require it), and its sound matters. */
+  #hint {
+    position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+    border: 0; background: none; padding: 6px 10px; font: inherit; font-size: 15px; letter-spacing: .04em;
+    color: var(--ink); opacity: .55; cursor: pointer; animation: breathe 2.8s ease-in-out infinite;
+    transition: opacity .6s ease;
+  }
+  #hint:hover { opacity: .95; animation: none; }
+  #hint.gone { opacity: 0; pointer-events: none; animation: none; }
+  @keyframes breathe { 0%, 100% { opacity: .35; } 50% { opacity: .7; } }
 </style>
 </head>
 <body>
@@ -57,6 +67,8 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 1.2h3.68l-8.04 9.19L24 22.8h-7.4l-5.8-7.58-6.63 7.58H.49l8.6-9.83L0 1.2h7.6l5.24 6.93 6.06-6.93Zm-1.3 19.4h2.04L6.48 3.3H4.3l13.3 17.3Z"/></svg>
     </a>
   </nav>
+
+  <button id="hint">&#9834; tap for sound</button>
 
   <div class="corner controls">
     <button id="sound" aria-label="Turn sound on" title="Sound">
@@ -76,9 +88,11 @@
     document.getElementById('icon-muted').classList.toggle('hidden', on);
     document.getElementById('icon-sound').classList.toggle('hidden', !on);
     snd.setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
+    if (on) document.getElementById('hint').classList.add('gone');
     if (v.paused) v.play().catch(() => {});
   }
   snd.onclick = () => setSound(v.muted);
+  document.getElementById('hint').onclick = () => setSound(true);
   v.onclick = () => { if (v.muted) setSound(true); else if (v.paused) v.play(); else v.pause(); };
   document.getElementById('full').onclick = () => {
     const el = document.documentElement;
