@@ -3,42 +3,50 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#16161d">
+<meta name="theme-color" content="#F2EDE3">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Hyde Street — a cable car ride</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>A Journey on the Powell-Hyde Cable Car</title>
 <meta name="description" content="A risograph film of a ride on San Francisco's Powell–Hyde cable car, from Union Square over Nob Hill and Russian Hill to the bay.">
-<meta property="og:title" content="Hyde Street — a cable car ride">
+<meta property="og:title" content="A Journey on the Powell-Hyde Cable Car">
 <meta property="og:description" content="A risograph film of a ride on San Francisco's Powell–Hyde cable car.">
 <meta property="og:image" content="/poster.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <style>
-  :root { --bg: #16161d; --fg: #f2ede3; }
+  /* Paper and ink from the film itself: the page is the sheet the print sits on. */
+  :root { --bg: #F2EDE3; --ink: #2E3192; --pad: 16px; --title: 64px; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
-  body { height: 100vh; height: 100dvh; display: grid; place-items: center; }
-  /* The film is square: as large as fits the viewport in both directions. */
+  body {
+    height: 100vh; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; color: var(--ink);
+  }
+  h1 {
+    margin: 0; height: var(--title); display: flex; align-items: center; text-align: center; padding: 0 var(--pad);
+    font-weight: 400; font-size: clamp(17px, 2.6vw, 26px); letter-spacing: .02em;
+  }
+  /* The film is square: as large as fits under the title in both directions. */
   video {
-    display: block;
-    width: min(100vw, 100vh); height: min(100vw, 100vh);
-    width: min(100vw, 100dvh); height: min(100vw, 100dvh);
-    object-fit: contain; background: var(--bg); cursor: pointer;
+    display: block; flex: none;
+    width: min(100vw - 2 * var(--pad), 100vh - var(--title) - 2 * var(--pad) - 44px);
+    width: min(100vw - 2 * var(--pad), 100dvh - var(--title) - 2 * var(--pad) - 44px);
+    aspect-ratio: 1; object-fit: contain; background: var(--bg); cursor: pointer;
   }
-  .corner {
-    position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 14px; align-items: center;
-  }
+  @media (max-width: 600px) { :root { --pad: 0px; --title: 56px; } }
+  .corner { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 14px; align-items: center; }
   .links { left: max(16px, env(safe-area-inset-left)); }
   .controls { right: max(16px, env(safe-area-inset-right)); }
   .corner a, .corner button {
     display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: none;
-    color: var(--fg); opacity: .3; transition: opacity .2s ease; cursor: pointer;
+    color: var(--ink); opacity: .35; transition: opacity .2s ease; cursor: pointer;
   }
-  .corner a:hover, .corner a:focus-visible, .corner button:hover, .corner button:focus-visible { opacity: .9; outline: none; }
+  .corner a:hover, .corner a:focus-visible, .corner button:hover, .corner button:focus-visible { opacity: .95; outline: none; }
   .corner svg { width: 20px; height: 20px; fill: currentColor; }
   .hidden { display: none; }
 </style>
 </head>
 <body>
+  <h1>A Journey on the Powell-Hyde Cable Car</h1>
   <video id="film" src="/hyde-street.mp4" poster="/poster.jpg" autoplay muted loop playsinline preload="auto"></video>
 
   <nav class="corner links" aria-label="Links">
