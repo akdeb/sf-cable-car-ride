@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16161d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Hyde Street — a cable car ride</title>
+<meta name="description" content="A risograph film of a ride on San Francisco's Powell–Hyde cable car, from Union Square over Nob Hill and Russian Hill to the bay.">
+<meta property="og:title" content="Hyde Street — a cable car ride">
+<meta property="og:description" content="A risograph film of a ride on San Francisco's Powell–Hyde cable car.">
+<meta property="og:image" content="/poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root { --bg: #16161d; --fg: #f2ede3; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  body { height: 100vh; height: 100dvh; display: grid; place-items: center; }
+  /* The film is square: as large as fits the viewport in both directions. */
+  video {
+    display: block;
+    width: min(100vw, 100vh); height: min(100vw, 100vh);
+    width: min(100vw, 100dvh); height: min(100vw, 100dvh);
+    object-fit: contain; background: var(--bg); cursor: pointer;
+  }
+  .corner {
+    position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 14px; align-items: center;
+  }
+  .links { left: max(16px, env(safe-area-inset-left)); }
+  .controls { right: max(16px, env(safe-area-inset-right)); }
+  .corner a, .corner button {
+    display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: none;
+    color: var(--fg); opacity: .3; transition: opacity .2s ease; cursor: pointer;
+  }
+  .corner a:hover, .corner a:focus-visible, .corner button:hover, .corner button:focus-visible { opacity: .9; outline: none; }
+  .corner svg { width: 20px; height: 20px; fill: currentColor; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <video id="film" src="/hyde-street.mp4" poster="/poster.jpg" autoplay muted loop playsinline preload="auto"></video>
+
+  <nav class="corner links" aria-label="Links">
+    <a href="https://github.com/akdeb/sf-cable-car-ride" target="_blank" rel="noopener" aria-label="GitHub repository">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 8.36 22.9c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+    </a>
+    <a href="https://x.com/_akadeb" target="_blank" rel="noopener" aria-label="X (Twitter) profile">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 1.2h3.68l-8.04 9.19L24 22.8h-7.4l-5.8-7.58-6.63 7.58H.49l8.6-9.83L0 1.2h7.6l5.24 6.93 6.06-6.93Zm-1.3 19.4h2.04L6.48 3.3H4.3l13.3 17.3Z"/></svg>
+    </a>
+  </nav>
+
+  <div class="corner controls">
+    <button id="sound" aria-label="Turn sound on" title="Sound">
+      <svg id="icon-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3Zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4-2.7-2.7Z"/></svg>
+      <svg id="icon-sound" class="hidden" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4ZM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6Z"/></svg>
+    </button>
+    <button id="full" aria-label="Full screen" title="Full screen">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4Zm10 0h6v6h-2V6h-4V4ZM4 14h2v4h4v2H4v-6Zm14 0h2v6h-6v-2h4v-4Z"/></svg>
+    </button>
+  </div>
+
+<script>
+  const v = document.getElementById('film'), snd = document.getElementById('sound');
+  // Browsers only autoplay muted video; the film's sound is half of it, so one tap turns it on.
+  function setSound(on) {
+    v.muted = !on;
+    document.getElementById('icon-muted').classList.toggle('hidden', on);
+    document.getElementById('icon-sound').classList.toggle('hidden', !on);
+    snd.setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
+    if (v.paused) v.play().catch(() => {});
+  }
+  snd.onclick = () => setSound(v.muted);
+  v.onclick = () => { if (v.muted) setSound(true); else if (v.paused) v.play(); else v.pause(); };
+  document.getElementById('full').onclick = () => {
+    const el = document.documentElement;
+    if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else if (el.requestFullscreen) el.requestFullscreen().catch(() => v.webkitEnterFullscreen && v.webkitEnterFullscreen());
+    else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen();              // iPhone Safari: native video full screen
+  };
+  v.play().catch(() => {});
+</script>
+</body>
+</html>

@@ -1734,6 +1734,7 @@ function drawBuilding(b, G, dist, defer) {
     const side = f.n[0] === -1 ? 'W' : f.n[0] === 1 ? 'E' : f.n[1] === -1 ? 'S' : 'N';
     const front = b.fronts.includes(side);
     put(p, lit(b.col, f.n[0], f.n[1], dist, front ? 0 : 0.15));
+    if (b.nook && f.n[0] === -1) { const job = () => nookFront(b, G, dist); defer ? defer.push(job) : job(); continue; }
     if (dist < 200) facadeDetail(b, f, dist, front, defer);
   }
   if (cam.z > b.zt) {                                     // roof seen from above
@@ -1930,6 +1931,7 @@ function lampPole(x, y, z, dist) {                          // a plain street li
    Grades from the real line: a steady climb from Jackson, level across
    Lombard, then 21% down to Beach. Telegraph Hill is a bump in the same terrain,
    so its houses climb it; Coit Tower stands in the park at its summit.       */
+const NOOK = { y0: 120, y1: 129 };                             // Nook's corner lot on Hyde, north of Jackson
 const HYDE = (() => {
   const prof = profile([[0, .10], [40, .12], [100, .12], [146, 0], [172, 0], [190, -.21], [268, -.21], [294, 0], [400, 0]], 3.5, 0, 400);
   const TX = 245, TY = 168;
@@ -1947,6 +1949,8 @@ const HYDE = (() => {
     adjust: (b) => {                                        // Lombard's houses sit back behind gardens
       if (b.x0 < 109 && b.y1 === 150) { b.y1 -= 3; if (b.x0 === FACADE) { b.h = Math.min(b.h, 7.4); b.fronts = 'WS'; } }
       if (b.x0 < 109 && b.y0 === 170) { b.y0 += 3; if (b.x0 === FACADE) { b.h = Math.min(b.h, 7.4); b.fronts = 'WN'; } }
+      if (b.x0 === FACADE && b.y0 === 120) { b.y1 = NOOK.y1; b.h = 11; b.col = C(.06, .03, 0, .02, .02); b.nook = true; b.fronts = 'WS'; }   // Nook's corner
+      if (b.x0 === FACADE && b.y0 > 120 && b.y0 < NOOK.y1) b.y0 = NOOK.y1;
     },
   });
   // Telegraph Hill park trees and Coit Tower
@@ -1957,7 +1961,7 @@ const HYDE = (() => {
   }
   const street = [], rs = rngFor('hyde:street');
   for (let y = 44; y < 300; y += 24 + rs() * 10) if (!streetsY.some(([a, b]) => y > a - 2 && y < b + 2)) street.push({ kind: 'lamp', x: 6.6, y });
-  for (let y = 48; y < 300; y += 9 + rs() * 16) if (!streetsY.some(([a, b]) => y > a - 3 && y < b + 3) && rs() < 0.55) street.push({ kind: 'tree', x: 7.3, y, rad: 1.6 + rs() * 1.1, key: 'hyde:st:' + y.toFixed(1) });
+  for (let y = 48; y < 300; y += 9 + rs() * 16) if (!streetsY.some(([a, b]) => y > a - 3 && y < b + 3) && !(y > 117 && y < 132) && rs() < 0.55) street.push({ kind: 'tree', x: 7.3, y, rad: 1.6 + rs() * 1.1, key: 'hyde:st:' + y.toFixed(1) });
   // Lombard's crooked block: eight hairpins in 96 m, between Hyde and Leavenworth
   const LOMB = [], LW = 3.1;
   for (let x = 9.5; x <= 105; x += 0.5) LOMB.push([x, 160 + 5.8 * Math.sin(Math.PI * (x - 9.5) / 12)]);
@@ -2099,6 +2103,7 @@ function hydeObjects(t, bay) {
     if (s.kind === 'lamp') street.push({ d, f: (d) => lampPole(s.x, s.y, H.G(0, s.y) + .16, d) });
     else street.push({ d, f: (d) => tree(s.x, s.y, H.G(0, s.y) + .16, s.rad, s.key, d, C(.46, 0, 0, .36, .16)) });
   }
+  if (Math.abs(cam.y - 124) < 40) street.push({ d: 7, f: () => cafeTables(H.G, t) });
   paintSorted(items); paintSorted(row); for (const j of defer) j(); paintSorted(street);
 }
 
@@ -2249,6 +2254,7 @@ const GLYPH = {
   S: [[[1, 1.2], [.7, 1.4], [.25, 1.4], [0, 1.15], [.1, .85], [.9, .55], [1, .25], [.75, 0], [.25, 0], [0, .2]]],
   F: [[[1, 1.4], [0, 1.4], [0, 0]], [[0, .74], [.7, .74]]],
   N: [[[0, 0], [0, 1.4], [1, 0], [1, 1.4]]],
+  K: [[[0, 0], [0, 1.4]], [[1, 1.4], [0, .6]], [[.3, .85], [1, 0]]],
   C: [[[1, 1.15], [.75, 1.4], [.3, 1.35], [.05, 1.0], [0, .7], [.05, .35], [.3, .05], [.75, 0], [1, .25]]],
 };
 /* Letters on a world plane: origin, unit axes along (u) and up (v), letter size. */
@@ -2754,6 +2760,136 @@ function gulls(t) {
   strokeCov(p, C(.02, .04, .08, .30, .40), 1.6);
 }
 
+
+/* ── Nook, on the corner of Hyde and Jackson ─────────────────────────────────
+   The small corner café (1500 Hyde St) the line runs past just after the turn
+   from Jackson: big corner windows, an awning with its name, café tables on
+   the sidewalk. Its building is the corner lot north of Jackson.            */
+function nookFront(b, G, dist) {
+  const f = { s: [FACADE, NOOK.y0], a: [0, 1], n: [-1, 0], L: NOOK.y1 - NOOK.y0 }, zg = Math.max(G(FACADE, NOOK.y0), G(FACADE, NOOK.y1)), H = c => cmix(c, SKY.hz, hazeAt(dist) * .6);
+  const q = (a0, a1, z0, z1, o) => polyW([fpo(f, a0, z0, o || 0), fpo(f, a1, z0, o || 0), fpo(f, a1, z1, o || 0), fpo(f, a0, z1, o || 0)]);
+  const base = q(0, f.L, zg - 0.6, zg + 3.6); if (base) put(base, H(C(.02, .06, .10, .44, .40)));       // dark painted shopfront
+  const glass = new Path2D(), warm = new Path2D();
+  for (const [a0, a1] of [[0.4, 2.8], [3.1, 5.4], [6.6, 8.6]]) {
+    polyInto(glass, [fpo(f, a0, zg + .6, .02), fpo(f, a1, zg + .6, .02), fpo(f, a1, zg + 2.9, .02), fpo(f, a0, zg + 2.9, .02)]);
+    polyInto(warm, [fpo(f, a0 + .1, zg + .7, .03), fpo(f, a1 - .1, zg + .7, .03), fpo(f, a1 - .1, zg + 1.7, .03), fpo(f, a0 + .1, zg + 1.7, .03)]);
+  }
+  put(glass, H(C(.06, .04, .04, .32, .30))); put(warm, H(C(.48 + .1 * GL, .30 + .1 * GL, .06)));
+  const door = q(5.6, 6.4, zg, zg + 2.8, .02); if (door) put(door, H(C(.04, .1, .12, .3, .5)));
+  // the awning: a sloped canvas out over the sidewalk, name on its valance
+  const aw = polyW([fpo(f, 0.1, zg + 3.3, 0), fpo(f, f.L - .1, zg + 3.3, 0), fpo(f, f.L - .1, zg + 2.75, 1.5), fpo(f, 0.1, zg + 2.75, 1.5)]);
+  const val = q(0.1, f.L - .1, zg + 2.35, zg + 2.75, 1.5);
+  const GREEN = C(.30, 0, 0, .56, .42);
+  if (aw) put(aw, H(GREEN)); if (val) put(val, H(cadd(GREEN, C(0, 0, 0, .06, .1))));
+  const stripes = new Path2D(); for (let a = 0.4; a < f.L - .2; a += 0.7) polyInto(stripes, [fpo(f, a, zg + 3.3, 0), fpo(f, a + .3, zg + 3.3, 0), fpo(f, a + .3, zg + 2.75, 1.5), fpo(f, a, zg + 2.75, 1.5)]);
+  put(stripes, H(C(.12, .04, 0, .06, .04)));
+  // upper floors: two rows of trimmed sash windows
+  const up = new Path2D(), tr = new Path2D();
+  for (const z of [zg + 4.9, zg + 8.0]) for (let a = 0.7; a + 1 < f.L; a += 2.1) {
+    polyInto(tr, [fpo(f, a - .15, z - .15, 0), fpo(f, a + 1.15, z - .15, 0), fpo(f, a + 1.15, z + 2.0, 0), fpo(f, a - .15, z + 2.0, 0)]);
+    for (const [z0, z1] of [[z, z + .85], [z + .95, z + 1.8]]) polyInto(up, [fpo(f, a, z0, .02), fpo(f, a + 1, z0, .02), fpo(f, a + 1, z1, .02), fpo(f, a, z1, .02)]);
+  }
+  put(tr, H(C(.02, .01, 0, .03, .03))); put(up, H(GLASS));
+  // the name, big, cream on a dark fascia above the awning
+  const fas = q(0.2, f.L - .2, zg + 3.55, zg + 4.45, .03); if (fas) put(fas, H(C(.04, .1, .12, .46, .5)));
+  const word = signText('NOOK', fpo(f, f.L / 2 + 1.55, zg + 3.72, .06), [0, -1, 0], [0, 0, 1], 0.56, 0.3);   // reads left to right from the street
+  for (const n of PL) { const g = PG[n]; g.globalCompositeOperation = 'destination-out'; g.globalAlpha = 1; g.lineWidth = Math.max(2, FOC * 0.11 / dist); g.stroke(word); }
+  strokeCov(word, C(.14, .05), Math.max(2, FOC * 0.11 / dist));
+  const blade = q(1.2, 1.26, zg + 3.6, zg + 4.6, 0);
+  const bs = polyW([fpo(f, 1.2, zg + 3.7, 0), fpo(f, 1.2, zg + 3.7, 1.0), fpo(f, 1.2, zg + 4.5, 1.0), fpo(f, 1.2, zg + 4.5, 0)]);
+  if (bs) put(bs, H(C(.1, .05, 0, .02, .02)));
+  const cup = proj(...fpo(f, 1.2, zg + 4.1, .5)); if (cup) { const r = FOC * .22 / cup[2], p = new Path2D(); p.ellipse(cup[0], cup[1], r, r * .8, 0, 0, TAU); put(p, H(C(.1, .5, .3, 0, .3))); }
+}
+function cafeTables(G, t) {
+  const z = G(0, 124) + .16;
+  for (const [y, kind] of [[121.6, 0], [124.4, 1], [127.2, 0]]) {
+    const x = 7.9, top = proj(x, y, z + .75), dist = Math.hypot(x - cam.x, y - cam.y);
+    if (!top) continue;
+    const k = FOC / top[2], tb = new Path2D(); tb.ellipse(top[0], top[1], .38 * k, .1 * k, 0, 0, TAU);
+    const leg = lineW([[x, y, z], [x, y, z + .75]]);
+    strokeCov(leg, C(.05, .1, .12, .3, .5), Math.max(1, .05 * k));
+    put(tb, C(.04, .02, .02, .06, .1));
+    for (const dy of [-.62, .62]) {                                   // bistro chairs
+      const c0 = proj(x + .1, y + dy, z), c1 = proj(x + .1, y + dy, z + .9);
+      if (!c0 || !c1) continue;
+      const ch = new Path2D(); ch.moveTo(c1[0], c1[1]); ch.lineTo(c0[0], c0[1]);
+      const seat = proj(x + .1, y + dy, z + .45); if (seat) { ch.moveTo(seat[0] - .2 * k, seat[1]); ch.lineTo(seat[0] + .2 * k, seat[1]); }
+      strokeCov(ch, C(.04, .1, .14, .34, .5), Math.max(1.2, .05 * k));
+    }
+    if (kind) {                                                       // a parasol over the middle table
+      const u0 = proj(x, y, z + .75), u1 = proj(x, y, z + 2.3);
+      if (u0 && u1) {
+        strokeCov(lineW([[x, y, z + .75], [x, y, z + 2.3]]), C(.2, .2, .1), Math.max(1, .04 * k));
+        const p = new Path2D(); p.moveTo(u1[0] - 1.1 * k, u1[1] + .35 * k); p.quadraticCurveTo(u1[0], u1[1] - .35 * k, u1[0] + 1.1 * k, u1[1] + .35 * k); p.closePath();
+        put(p, C(.55, .1, .04));
+      }
+    }
+  }
+}
+
+/* ── a Powell car passing on the next track ───────────────────────────────────
+   While we wait at Lombard, a southbound car climbs past on the adjacent track
+   (the film puts it on our side of the car: in the real street it passes on the
+   other side). Built in our car's frame, like the truck: maroon dash, cream
+   posts, the round-topped windows of the enclosed section, the open grip end
+   with riders on the outward bench and one on the running board, waving.    */
+const PASS = { t: 60.9, v: 4.2, d: 3.0, L: 8.4 };
+const passOff = t => -(t - PASS.t) * PASS.v;                  // car centre ahead of us (m); it moves toward the rear
+function passingCar(t) {
+  const o = passOff(t);
+  if (Math.abs(o) > 9.5) return;
+  const d = PASS.d, b0 = -EYE - 0.35;
+  const P = (a, b, dd) => [scrX(dd || d, a), scrY(dd || d, b)];
+  const Q = (a0, a1, bA, bB, dd) => { const p = new Path2D(); [[a0, bA], [a1, bA], [a1, bB], [a0, bB]].forEach(([a, b], i) => { const [x, y] = P(a, b, dd); i ? p.lineTo(x, y) : p.moveTo(x, y); }); p.closePath(); return p; };
+  // its rear (uphill-facing end) is toward the right of frame as it moves right: open grip section leads (right)
+  const A0 = o - PASS.L / 2, A1 = o + PASS.L / 2, gripA = A0 + 3.2;   // a < gripA: open section (right of frame)
+  const MAROON2 = C(.08, .40, .82, .02, .46), CREAM = C(.16, .06, .01), BLUEP = C(.02, .02, .04, .60, .30), ROOF2 = C(.10, .20, .14, .10, .36);
+  put(Q(A0 - .1, A1 + .1, b0 + 3.0, b0 + 3.35), ROOF2);                                  // roof
+  put(Q(A0 + 3.4, A1 - 1.0, b0 + 3.35, b0 + 3.62), ROOF2);                               // clerestory
+  const cl = new Path2D(); for (let a = A0 + 3.7; a < A1 - 1.3; a += 0.55) { const p = Q(a, a + .35, b0 + 3.39, b0 + 3.56); cl.addPath(p); } put(cl, C(.2, .06, .02, .06));
+  // enclosed section: cream body, windows with rounded tops, maroon dash below
+  put(Q(gripA, A1, b0 + 1.35, b0 + 3.0), CREAM);
+  const win = new Path2D(), n = 5, wa = (A1 - 0.9 - gripA - .3) / n;
+  for (let k = 0; k < n; k++) {
+    const a0 = gripA + .3 + k * wa + .08, a1 = a0 + wa - .16, [x0, yb] = P(a1, b0 + 1.75), [x1, yt] = P(a0, b0 + 2.8), r = Math.min((x1 - x0) * .3, 20);
+    win.moveTo(x0, yb); win.lineTo(x0, yt + r); win.arcTo(x0, yt, x0 + r, yt, r); win.lineTo(x1 - r, yt); win.arcTo(x1, yt, x1, yt + r, r); win.lineTo(x1, yb); win.closePath();
+  }
+  put(win, C(.04, .04, .08, .40, .44));
+  put(Q(gripA, A1, b0 + .5, b0 + 1.35), MAROON2);
+  put(Q(A0, A1, b0 + 1.3, b0 + 1.42), BLUEP);                                             // belt rail
+  put(Q(A1 - .9, A1, b0 + .5, b0 + 3.0), MAROON2);                                        // rear platform dash
+  // open grip section: shadowed interior, outward bench, iron roof brackets and posts
+  put(Q(A0, gripA, b0 + 1.2, b0 + 3.0), C(.06, .16, .24, .30, .56));
+  put(Q(A0, gripA, b0 + .5, b0 + 1.2), MAROON2);
+  put(Q(A0 + .1, gripA - .1, b0 + 1.18, b0 + 1.32), C(.34, .44, .12, 0, .2));              // bench seat
+  const posts = new Path2D(); for (const a of [A0 + .08, A0 + 1.6, gripA - .06]) { posts.addPath(Q(a - .05, a + .05, b0 + 1.3, b0 + 3.0)); }
+  put(posts, CREAM);
+  const br = new Path2D(); for (const a of [A0 + .08, A0 + 1.6, gripA - .06]) for (const s of [-1, 1]) { const [x0, y0] = P(a, b0 + 2.55), [x1, y1] = P(a + s * .45, b0 + 3.0); br.moveTo(x0, y0); br.quadraticCurveTo(x0, y1, x1, y1); }
+  strokeCov(br, C(.04, .1, .12, .3, .55), 3);
+  // running board and wheels below the dash
+  put(Q(A0, A1, b0 + .38, b0 + .5, d - .25), C(.24, .3, .1, 0, .3));
+  // riders: seated on the outward bench, one standing on the board holding a post, waving
+  const riders = [[A0 + .5, 0, C(.02, .08, .20, .45, .10)], [A0 + 1.05, 0, C(.50, .12, .04)], [A0 + 2.1, 0, C(.04, .40, .30, 0, .08)], [A0 + 2.7, 0, C(.02, .02, .06, .12, .10)], [A0 + 1.6, 1, C(.02, .50, .70, 0, .06)]];
+  for (const [a, stand, shirt] of riders) {
+    const dd = stand ? d - .3 : d - .05, hb = stand ? b0 + 2.45 : b0 + 2.05, k = FOC / dd;
+    const [hx, hy] = P(a, hb, dd), body = new Path2D();
+    const sh = hb - .2, hip = stand ? b0 + 1.45 : b0 + 1.35;
+    const [sx0, sy] = P(a + .2, sh, dd), [sx1] = P(a - .2, sh, dd), [ix0, iy] = P(a + .16, hip, dd), [ix1] = P(a - .16, hip, dd);
+    body.moveTo(sx0, sy); body.quadraticCurveTo(sx0 - .02 * k, (sy + iy) / 2, ix0, iy); body.lineTo(ix1, iy); body.quadraticCurveTo(sx1 + .02 * k, (sy + iy) / 2, sx1, sy); body.closePath();
+    put(body, shirt);
+    const legs = new Path2D(), [f0x, f0y] = P(a + .08, stand ? b0 + .5 : b0 + .85, dd), [f1x] = P(a - .1, 0, dd);
+    legs.moveTo(ix0, iy); legs.lineTo(f0x, f0y); legs.lineTo(f1x, f0y); legs.lineTo(ix1, iy); legs.closePath();
+    put(legs, C(.04, .06, .10, .40, .40));
+    const head = new Path2D(); head.ellipse(hx, hy, .11 * k, .13 * k, 0, 0, TAU);
+    put(head, C(.20, .34, .16, 0, .06));
+    const hair = new Path2D(); hair.ellipse(hx, hy - .05 * k, .115 * k, .08 * k, 0, Math.PI, TAU); put(hair, C(.1, .3, .2, .1, .5));
+    const wave = Math.sin(t * 7 + a) * .12, arm = new Path2D(), [ex, ey] = P(a - .28 + wave, sh + .42, dd), [wx, wy] = P(a - .22 + wave * 1.6, sh + .7, dd);
+    arm.moveTo(sx1, sy); arm.lineTo(ex, ey); arm.lineTo(wx, wy);
+    strokeCov(arm, shirt, Math.max(2, .08 * k));
+    const hand = new Path2D(); hand.arc(wx, wy, .05 * k, 0, TAU); put(hand, C(.2, .34, .16, 0, .06));
+  }
+}
+
 /* ── where the car is ──────────────────────────────────────────────────────── */
 const UH0 = 160 - (S(T_LOM) - S(T_SW));                    // Hyde u at the switch, so Lombard lands at u = 160
 function carOn(prof, u) {                                   // pitch from the two trucks, 7 m apart
@@ -2788,6 +2924,7 @@ function drawArt(t) {
     else { const bay = t > T_BEACH - 6; if (bay) { sunDisk(t); wharfFar(t); } hydeFar(t); if (bay) alcatraz(); hydeGround(t); if (bay) wharfGround(t); hydeObjects(t, bay); }
   }
   truck(t);
+  if (c.seg === 'hyde') passingCar(t);
   laycabin();
   strap(t);
   compose();
@@ -2811,40 +2948,96 @@ function follow(param, fn, t0, t1, step) {                 // automation that tr
   for (let t = t0 + step; t <= t1 + 1e-9; t += step) param.linearRampToValueAtTime(Math.max(fn(t), TINY), t);
 }
 function strike(s, at, o = {}) {                            // the cable car bell: a bronze clang, bright contact
-  const { level = .1, midi = 81, pan = -0.1, send = .35 } = o;
-  struck(s, at, midi, [[1, 1, 1.5], [2.02, .6, 1.0], [2.76, .5, .8], [3.9, .32, .55], [5.4, .2, .35], [6.8, .12, .25]], { level, pan, send, strike: .55, strikeHz: 6200 });
+  const { level = .1, midi = 85.2, pan = -0.1, send = .35 } = o;                  // 1140 Hz, as measured
+  struck(s, at, midi, [[1, 1, 1.1], [1.76, .7, .9], [2.69, .55, .7], [3.74, .35, .5], [4.91, .22, .35]], { level, pan, send, strike: .6, strikeHz: 6000 });
 }
 function ringBell(s, at, pat, o = {}) {
-  const gaps = pat === 'roll' ? [0, .15, .38, .5, .62, .9, 1.02, 1.3] : [...pat].map((_, i) => i * (pat.length === 3 ? .14 : .17));
+  const gaps = pat === 'roll' ? [0, .45, .9, 1.35, 1.8, 2.25, 2.7] : [...pat].map((_, i) => i * .45);   // the recording's ~0.45 s ring spacing
   gaps.forEach((g, i) => strike(s, at + g, { ...o, level: (o.level || .1) * (i === gaps.length - 1 ? 1 : .85) }));
 }
 function scoreRide(s) {
   const D = DUR;
-  // the cable in its slot: low whir and a faint sheave whine, always running
-  const hum = s.ac.createGain(), hf = s.ac.createBiquadFilter(); hf.type = 'lowpass'; hf.frequency.value = 170; hf.Q.value = .6;
-  s.env(hum.gain, 0, { attack: .4, hold: D - 2.2, release: 1.6, peak: .16 });
-  s.play(s.noise(s.key + ':slot', 8, 'brown'), 0, D, { loop: true }).connect(hf).connect(hum); s.place(hum, { pan: 0, send: .05, bus: 'bed' });
-  for (const [f, lv] of [[97, .006], [146, .004], [291, .0015]]) { const g = s.ac.createGain(); s.env(g.gain, 0, { attack: .6, hold: D - 2.4, release: 1.6, peak: lv }); s.osc('sine', f, 0, D, { detune: 6 }).connect(g); s.place(g, { pan: 0, send: .05, bus: 'bed' }); }
-  // car rumble and window rattle follow speed; they fade to nothing when the car stands
+  /* Modelled on a field recording of a Powell car underway (analysed, not embedded):
+     77% of the energy sits in 100–300 Hz, a grinding roar peaking near 200 Hz whose level
+     swells by about ±45% at 0.15–0.7 Hz; over it, bright metallic clanks (1.5–8 kHz) about
+     2.2 per second at irregular intervals, often in pairs 25–50 ms apart. */
   const v01 = t => clamp(speed(t) / 7, 0, 1.4);
-  const rum = s.ac.createGain(), rb = s.ac.createBiquadFilter(); rb.type = 'bandpass'; rb.frequency.value = 180; rb.Q.value = .8;
-  follow(rum.gain, t => .55 * v01(t), 0, D, .1);
-  s.play(s.noise(s.key + ':rumble', 7, 'pink'), 0, D, { loop: true }).connect(rb).connect(rum); s.place(rum, { pan: 0, send: .08, bus: 'bed' });
-  const rat = s.ac.createGain(), ra = s.ac.createBiquadFilter(); ra.type = 'bandpass'; ra.frequency.value = 2100; ra.Q.value = 3;
-  follow(rat.gain, t => .07 * v01(t) * (0.6 + 0.4 * Math.abs(Math.sin(S(t) * 2.3))), 0, D, .05);
-  s.play(s.noise(s.key + ':rattle', 6, 'white'), 0, D, { loop: true }).connect(ra).connect(rat); s.place(rat, { pan: .25, send: .15, bus: 'fx' });
-  // rail joints (both trucks) and pulley thunks, placed by distance
-  const joints = [];
-  for (let d = 6; d < S(DUR); d += 12.5) joints.push(d, d + 7);
-  let ti = 0;
-  for (const d of joints) {
-    while (ti < DUR * 30 && S(ti / 30) < d) ti++;
-    let lo = (ti - 1) / 30, hi = ti / 30;
-    for (let k = 0; k < 20; k++) { const m = (lo + hi) / 2; if (S(m) < d) lo = m; else hi = m; }
-    if (hi > DUR - .2 || speed(hi) < 0.6) continue;
-    contact(s, hi, { material: 'metal', f0: 310 + (d % 3) * 22, level: .07 * v01(hi), pan: .1, send: .08, key: 'joint' });
-    contact(s, hi + .004, { material: 'stone', f0: 90, level: .16 * v01(hi), pan: 0, send: 0, key: 'jthud' });
+  const swellAt = t => 1 + .45 * (.5 * Math.sin(TAU * .16 * t + 1.3) + .3 * Math.sin(TAU * .33 * t + 4.1) + .2 * Math.sin(TAU * .71 * t + 2.2));
+  const roarLevel = t => (.22 + .78 * sm(v01(t))) * swellAt(t);                 // the cable still grinds when the car stands
+  for (const [fc, q, lv, col, key] of [[200, 1.3, 1.0, 'pink', 'roar'], [150, 1.4, .3, 'pink', 'roarlo'], [410, 2.2, .09, 'pink', 'roarhi']]) {
+    const g = s.ac.createGain(), bp = s.ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fc; bp.Q.value = q;
+    follow(g.gain, t => lv * roarLevel(t) * sm(t / .4) * sm((D - t) / 1.6), 0, D, .05);
+    s.play(s.noise(s.key + ':' + key, 9, col), 0, D, { loop: true }).connect(bp).connect(g); s.place(g, { pan: 0, send: .06, bus: 'bed' });
   }
+  const grind = s.ac.createGain(), gb = s.ac.createBiquadFilter(); gb.type = 'bandpass'; gb.frequency.value = 202; gb.Q.value = 9;   // the tonal edge of the roar
+  follow(grind.gain, t => .5 * roarLevel(t) * sm(t / .4) * sm((D - t) / 1.6), 0, D, .05);
+  s.play(s.noise(s.key + ':grind', 7, 'white'), 0, D, { loop: true }).connect(gb).connect(grind); s.place(grind, { pan: 0, send: .04, bus: 'bed' });
+  const rat = s.ac.createGain(), ra = s.ac.createBiquadFilter(); ra.type = 'bandpass'; ra.frequency.value = 2400; ra.Q.value = 1.4;
+  follow(rat.gain, t => .02 * v01(t) * swellAt(t * 1.7), 0, D, .05);
+  s.play(s.noise(s.key + ':rattle', 6, 'white'), 0, D, { loop: true }).connect(ra).connect(rat); s.place(rat, { pan: .2, send: .12, bus: 'fx' });
+  /* Track sounds. Steel wheels over rail joints: each joint is hit by both axles of both
+     trucks (1.2 m apart, trucks 7 m apart), the familiar clack-clack … clack-clack. Each hit
+     is a low wheel thump, a short steel body and a little ring, never a bright tick. Over the
+     slot pulleys the grip gives a dull thonk. Loose metal in the car clanks now and then, low
+     and dull. The wheels sizzle on the railhead in proportion to speed. */
+  const hitAt = (dist) => {                                // film time the car reaches a distance
+    let lo = 0, hi = DUR;
+    for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (S(m) < dist) lo = m; else hi = m; }
+    return hi;
+  };
+  const knock = (t, lv, pan, key) => {
+    const g = s.ac.createGain(); s.env(g.gain, t, { attack: .002, release: .07, peak: lv });
+    const o = s.osc('sine', 105, t, t + .1); o.frequency.exponentialRampToValueAtTime(52, t + .06); o.connect(g);
+    s.place(g, { pan, send: .04, bus: 'fx' });
+    const n = s.ac.createGain(), bp = s.ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 380; bp.Q.value = 1.4;
+    s.env(n.gain, t, { attack: .001, release: .035, peak: lv * 1.6 });
+    s.play(s.noise(s.key + ':' + key, .12, 'pink'), t, t + .06).connect(bp).connect(n); s.place(n, { pan, send: .06, bus: 'fx' });
+    const r = s.ac.createGain(), rb = s.ac.createBiquadFilter(); rb.type = 'bandpass'; rb.frequency.value = 640; rb.Q.value = 9;
+    s.env(r.gain, t, { attack: .001, release: .09, peak: lv * 2.2 });
+    s.play(s.noise(s.key + ':' + key + 'r', .15, 'white'), t, t + .02).connect(rb).connect(r); s.place(r, { pan, send: .1, bus: 'fx' });
+  };
+  const rj = rngFor('hyde:joints');
+  for (let d = 6; d < S(DUR); d += 12.5) {
+    for (const [off, w] of [[0, 1], [1.2, .85], [7, .9], [8.2, .75]]) {
+      const t = hitAt(d + off);
+      if (t > DUR - .2 || speed(t) < 0.5) continue;
+      knock(t, .16 * w * v01(t) * (.85 + .3 * rj()), off < 5 ? .05 : -.05, 'knock' + (rj() * 3 | 0));
+    }
+  }
+  for (let d = 3; d < S(DUR); d += 9.7) {                   // the grip passing over the slot pulleys
+    const t = hitAt(d);
+    if (t > DUR - .2 || speed(t) < 0.5) continue;
+    contact(s, t, { material: 'stone', f0: 70, level: .1 * v01(t), pan: -.1, send: .03, key: 'thonk' });
+    contact(s, t + .012, { material: 'wood', f0: 190, level: .05 * v01(t), pan: -.1, send: .05, key: 'thonk2' });
+  }
+  const rc = rngFor('hyde:clanks');
+  for (let t = .5; t < D - .5;) {                          // loose metal, low and dull
+    t += -Math.log(1 - rc() * .999) / (.1 + 1.0 * v01(t));
+    if (t > D - .5) break;
+    const lv = (.04 + .06 * rc()) * (.3 + .7 * v01(t)), pan = rc() * .5 - .25;
+    contact(s, t, { material: 'metal', f0: 520 + rc() * 520, level: lv, pan, send: .12, key: 'clank' + (rc() * 4 | 0) });
+    contact(s, t + .003, { material: 'stone', f0: 160, level: lv * 1.2, pan, send: 0, key: 'clankb' });
+    if (rc() < .3) contact(s, t + .03 + rc() * .03, { material: 'metal', f0: 480 + rc() * 400, level: lv * .6, pan, send: .12, key: 'clank' + (rc() * 4 | 0) });
+  }
+  const siz = s.ac.createGain(), sz = s.ac.createBiquadFilter(); sz.type = 'bandpass'; sz.frequency.value = 1150; sz.Q.value = .8;
+  follow(siz.gain, t => .03 * v01(t) ** 1.5, 0, D, .1);
+  s.play(s.noise(s.key + ':sizzle', 6, 'pink'), 0, D, { loop: true }).connect(sz).connect(siz); s.place(siz, { pan: 0, send: .08, bus: 'bed' });
+  // flange squeal: long through the Jackson curves (under the truck), short bursts on the plunge
+  for (const [t0, dur, lv, f1] of [[45.9, 3.2, .009, 3150], [70.3, .9, .008, 3400], [74.0, 1.2, .009, 3300], [77.4, .8, .007, 3500]]) {
+    const g = s.ac.createGain(); s.swell(g.gain, t0, dur, lv, .5);
+    for (const [m, a] of [[1, 1], [1.38, .5]]) {
+      const o = s.osc('sine', f1 * m, t0, t0 + dur), vib = s.osc('sine', 5.3, t0, t0 + dur), vd = s.ac.createGain(), ga = s.ac.createGain();
+      vd.gain.value = 40 * m; vib.connect(vd).connect(o.frequency); ga.gain.value = a; o.connect(ga).connect(g);
+    }
+    s.place(g, { pan: .15, send: .35, bus: 'fx' });
+  }
+  // the passing car: its own roar sweeps across, its bell, its clanks
+  const pc = s.ac.createGain(), pb = s.ac.createBiquadFilter(); pb.type = 'bandpass'; pb.frequency.value = 190; pb.Q.value = 1.2;
+  const pp = s.ac.createStereoPanner(); follow(pp.pan, t => clamp(-passOff(t) / 7, -.85, .85) || TINY, PASS.t - 4, PASS.t + 4, .05);
+  follow(pc.gain, t => .9 * Math.exp(-((passOff(t) / 5) ** 2)), PASS.t - 4, PASS.t + 4, .05);
+  s.play(s.noise(s.key + ':passroar', 8, 'pink'), PASS.t - 4, PASS.t + 4).connect(pb).connect(pc).connect(pp).connect(s.bus.fx);
+  ringBell(s, PASS.t - 1.3, 'dd', { level: .03, pan: -.35, midi: 85.6 });
+  for (let k = 0; k < 4; k++) { const t = PASS.t - 1.0 + k * .5; knock(t, .12, clamp(-passOff(t) / 7, -.8, .8), 'pknock'); }
   // grip on at each departure: clunk, ratchet, the car's timber creaking as it takes the pull
   for (const t of DEPARTS) {
     contact(s, t, { material: 'metal', f0: 150, level: .12, pan: -.15, send: .2, key: 'grip' });
@@ -2886,15 +3079,28 @@ function scoreWorld(s) {
   wind(s, 55, 68, { level: .03, centre: 480, sweep: 220, whistle: .05, key: 'crest' });
   // the bay: water lapping, gulls, the turntable, the sign coming on, a foghorn
   for (let t = T_BEACH - 3, k = 0; t < DUR - 2; t += 1.7 + h01('lap' + k) * 1.3, k++) breath(s, t, 1.6, { level: .025, from: 300, to: 700, back: 260, q: .7, pan: -.2 + h01('lp' + k) * .4, key: 'lap' + (k % 3) });
-  for (let k = 0; k < 9; k++) {
-    const t = 77 + k * 2.1 + h01('gull' + k) * 1.2; if (t > DUR - 1.5) break;
-    const n = 2 + (h01('gn' + k) * 3 | 0), pan = h01('gp' + k) * 1.4 - .7;
-    for (let j = 0; j < n; j++) {
-      const t0 = t + j * .32, g = s.ac.createGain(), o = s.osc('triangle', 1650, t0, t0 + .3);
-      o.frequency.setValueAtTime(1500 + h01('gf' + k + j) * 400, t0); o.frequency.exponentialRampToValueAtTime(900, t0 + .26);
-      const f = s.ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 1.4;
-      s.env(g.gain, t0, { attack: .03, hold: .1, release: .16, peak: .03 }); o.connect(f).connect(g); s.place(g, { pan, send: .6, bus: 'fx' });
-    }
+  /* Herring gulls: a nasal "kyow" (rising fast, then falling) followed by a laughing run of
+     short "ha" notes. Buzzy harmonics through two vocal-tract formants, a 38 Hz roughness,
+     distance in the reverb send. */
+  const gullNote = (t0, dur, fStart, fPeak, fEnd, lv, pan) => {
+    const g = s.ac.createGain(), rough = s.ac.createGain(), am = s.osc('sine', 38, t0, t0 + dur), amd = s.ac.createGain();
+    g.gain.setValueAtTime(TINY, t0); g.gain.linearRampToValueAtTime(lv, t0 + .02); g.gain.setValueAtTime(lv, t0 + dur * .55); g.gain.exponentialRampToValueAtTime(TINY, t0 + dur);
+    rough.gain.value = .7; amd.gain.value = .3; am.connect(amd).connect(rough.gain);
+    const o = s.osc('sawtooth', fStart, t0, t0 + dur);
+    o.frequency.setValueAtTime(fStart, t0); o.frequency.linearRampToValueAtTime(fPeak, t0 + dur * .18); o.frequency.exponentialRampToValueAtTime(fEnd, t0 + dur);
+    const f1 = s.ac.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 1700; f1.Q.value = 3;
+    const f2 = s.ac.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 3100; f2.Q.value = 4;
+    const g2 = s.ac.createGain(); g2.gain.value = .45;
+    o.connect(rough); rough.connect(f1).connect(g); rough.connect(f2).connect(g2).connect(g);
+    s.place(g, { pan, send: .55, bus: 'fx' });
+  };
+  const gull = (t, pan, lv, laughs) => {
+    gullNote(t, .5, 640, 1150, 560, lv, pan);                                   // kyow
+    for (let j = 0; j < laughs; j++) gullNote(t + .62 + j * .21, .15, 820, 960, 700, lv * (.8 - j * .08), pan);   // ha-ha-ha
+  };
+  for (let k = 0; k < 6; k++) {
+    const t = 77.5 + k * 3.1 + h01('gull' + k) * 1.2; if (t > DUR - 2.5) break;
+    gull(t, h01('gp' + k) * 1.4 - .7, .09 * (.6 + .4 * h01('gl' + k)), 2 + (h01('gn' + k) * 4 | 0));
   }
   const tt = s.ac.createGain(), tb = s.ac.createBiquadFilter(); tb.type = 'lowpass'; tb.frequency.value = 240;
   s.swell(tt.gain, T_TURN0 - .2, T_TURN1 - T_TURN0 + .6, .09, .5);
@@ -2930,8 +3136,8 @@ const SHOTS = [
   { id: 'california', start: 29.5, end: T_GO2, readAt: 35, action: 'level crossing at the crest: down California Street to the Bay Bridge; a California car climbs toward us', transition: 'continuous' },
   { id: 'powell-down', start: T_GO2, end: TRK.t0, readAt: 42, action: 'over the crest and down toward Jackson; the strap swings forward', transition: 'truck wipe' },
   { id: 'truck', start: TRK.t0, end: TRK.t0 + 5.6, readAt: T_SW, action: 'a box truck overtakes and fills the window; the car turns through Jackson under it', transition: 'truck wipe' },
-  { id: 'hyde-climb', start: TRK.t0 + 5.6, end: 55.5, readAt: 52, action: 'Russian Hill Victorians climb to the crest', transition: 'continuous' },
-  { id: 'lombard', start: 55.5, end: T_GO3, readAt: 60, action: 'stopped at Lombard: the crooked block below, Coit Tower at the end; cars creep down the switchbacks', transition: 'continuous' },
+  { id: 'hyde-climb', start: TRK.t0 + 5.6, end: 55.5, readAt: 52, action: 'Nook on the corner of Jackson (awning, café tables), then Russian Hill Victorians climb to the crest', transition: 'continuous' },
+  { id: 'lombard', start: 55.5, end: T_GO3, readAt: 60, action: 'stopped at Lombard: the crooked block below, Coit Tower at the end; cars creep down the switchbacks; a southbound Powell car passes close with riders waving', transition: 'continuous' },
   { id: 'plunge', start: T_GO3, end: T_BEACH, readAt: 72, action: 'the 21% plunge toward the bay: the world tilts the other way, stepped houses, sunset coming', transition: 'continuous' },
   { id: 'turntable', start: T_BEACH, end: DUR, readAt: 96, action: 'the turntable swings the car: wharf, Hyde Street Pier and its square-rigger, the Golden Gate; Ghirardelli comes on', transition: 'hold' },
 ];
